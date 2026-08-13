@@ -57,12 +57,19 @@ export XDG_CONFIG_HOME="$TARGET_DIR/.config"
 export XDG_DATA_HOME="$TARGET_DIR/.local/share"
 export XDG_CACHE_HOME="$TARGET_DIR/.cache"
 export XDG_STATE_HOME="$TARGET_DIR/.local/state"
+export XDG_RUNTIME_DIR="$TARGET_DIR/runtime"
+mkdir -p "$XDG_RUNTIME_DIR"
 
-# Desactivar la integración con el Keyring del sistema (Gnome Keyring / SecretService via DBus)
-# Esto obliga a Antigravity CLI a almacenar los tokens de sesión en archivos en $TARGET_DIR/.gemini/config/config.json
-# evitando que los perfiles compartan o sobreescriban credenciales en el llavero global de Linux.
-export DBUS_SESSION_BUS_ADDRESS=""
+# Desactivar la integración con el Keyring/KWallet del sistema (Gnome Keyring / SecretService / KWallet via DBus)
+# En openSUSE Desktop con KDE/GNOME, DBus intenta conectarse a /run/user/1000/bus mediante XDG_RUNTIME_DIR.
+# Al aislar XDG_RUNTIME_DIR y fijar DBUS_SESSION_BUS_ADDRESS a un socket inválido, obligamos a Antigravity CLI
+# a operar en Modo Headless (sin interfaz gráfica), usando almacenamiento de tokens basado en archivos locales
+# en $TARGET_DIR/.gemini/config/config.json tal como funciona en tu servidor de consola.
+export DBUS_SESSION_BUS_ADDRESS="unix:path=/dev/null"
 export GNOME_KEYRING_CONTROL=""
+export GNOME_KEYRING_PID=""
+export KDE_FULL_SESSION=""
+export DESKTOP_SESSION=""
 
 # Crear un lanzador de navegador aislado por perfil para evitar que Google OAuth use las cookies
 # de la cuenta principal del navegador por defecto.
