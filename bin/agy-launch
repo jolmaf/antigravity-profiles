@@ -33,16 +33,60 @@ if [ "$TARGET_DIR" == "null" ]; then
     exit 1
 fi
 
-# Expandir la tilde (~) si existe en la ruta
-TARGET_DIR="${TARGET_DIR/#\~/$HOME}"
+REAL_HOME="$HOME"
+TARGET_DIR="${TARGET_DIR/#\~/$REAL_HOME}"
 
 # Crear el directorio si no existe
 mkdir -p "$TARGET_DIR"
+
+# Enlazar .gitconfig y .ssh si existen en el home real para que funcionen git y ssh
+if [ -f "$REAL_HOME/.gitconfig" ] && [ ! -e "$TARGET_DIR/.gitconfig" ]; then
+    ln -sf "$REAL_HOME/.gitconfig" "$TARGET_DIR/.gitconfig"
+fi
+if [ -d "$REAL_HOME/.ssh" ] && [ ! -e "$TARGET_DIR/.ssh" ]; then
+    ln -sf "$REAL_HOME/.ssh" "$TARGET_DIR/.ssh"
+fi
 
 echo "Lanzando Antigravity CLI con perfil [$PROFILE]..."
 echo "Directorio de sesión: $TARGET_DIR"
 echo "--------------------------------------------------"
 
-# Exportar la variable de entorno nativa de la CLI y ejecutar
-export GEMINI_CONFIG_DIR="$TARGET_DIR"
+# Asignar HOME y XDG dirs al directorio del perfil para aislar completamente la configuración (~/.gemini)
+export HOME="$TARGET_DIR"
+export XDG_CONFIG_HOME="$TARGET_DIR/.config"
+export XDG_DATA_HOME="$TARGET_DIR/.local/share"
+export XDG_CACHE_HOME="$TARGET_DIR/.cache"
+export XDG_STATE_HOME="$TARGET_DIR/.local/state"
+
+# Desactivar la integración con el Keyring del sistema (Gnome Keyring / SecretService via DBus)
+# Esto obliga a Antigravity CLI a almacenar los tokens de sesión en archivos en $TARGET_DIR/.gemini/config/config.json
+# evitando que los perfiles compartan o sobreescriban credenciales en el llavero global de Linux.
+export DBUS_SESSION_BUS_ADDRESS=""
+export GNOME_KEYRING_CONTROL=""
+
+# Crear un lanzador de navegador aislado por perfil para evitar que Google OAuth use las cookies
+# de la cuenta principal del navegador por defecto.
+mkdir -p "$TARGET_DIR/bin"
+cat << 'EOF' > "$TARGET_DIR/bin/open-browser"
+#!/usr/bin/env bash
+URL="$1"
+[ -z "$URL" ] && exit 0
+BROWSER_DIR="$HOME/browser-data"
+mkdir -p "$BROWSER_DIR"
+if command -v google-chrome &>/dev/null; then
+    exec google-chrome --user-data-dir="$BROWSER_DIR" "$URL" >/dev/null 2>&1 &
+elif command -v google-chrome-stable &>/dev/null; then
+    exec google-chrome-stable --user-data-dir="$BROWSER_DIR" "$URL" >/dev/null 2>&1 &
+elif command -v chromium &>/dev/null; then
+    exec chromium --user-data-dir="$BROWSER_DIR" "$URL" >/dev/null 2>&1 &
+elif command -v firefox &>/dev/null; then
+    exec firefox --private-window "$URL" >/dev/null 2>&1 &
+else
+    exec xdg-open "$URL" >/dev/null 2>&1 &
+fi
+EOF
+chmod +x "$TARGET_DIR/bin/open-browser"
+
+export BROWSER="$TARGET_DIR/bin/open-browser"
+
 exec agy "${@:2}"
