@@ -1,0 +1,9 @@
+dotfiles-agy/
+├── bin/
+│   └── agy-launch
+├── config/
+│   └── profiles.json.example
+├── install.sh
+├── uninstall.sh
+├── Makefile
+└── README.md

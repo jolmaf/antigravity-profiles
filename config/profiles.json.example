@@ -1,0 +1,14 @@
+{
+  "jolmaf": {
+    "desc": "Cuenta Personal jolmaf (Gmail)",
+    "config_dir": "~/.gemini-profiles/jolmaf"
+  },
+  "maxwell": {
+    "desc": "Cuenta de Maxwell (Gmail)",
+    "config_dir": "~/.gemini-profiles/maxwell"
+  },
+  "ruffo": {
+    "desc": "Cuenta de Ruffo (Gmail)",
+    "config_dir": "~/.gemini-profiles/ruffo"
+  }
+}

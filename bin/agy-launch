@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+CONFIG_FILE="$HOME/.config/agy-profiles/profiles.json"
+
+# Verificar que jq esté instalado
+if ! command -v jq &> /dev/null; then
+    echo "Error: 'jq' es necesario para ejecutar este script. Instálalo antes de continuar."
+    exit 1
+fi
+
+# Verificar si existe el archivo de configuración
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Error: No se encontró el archivo de configuración en $CONFIG_FILE"
+    exit 1
+fi
+
+PROFILE="$1"
+
+# Si no se pasa un perfil, listar los disponibles
+if [ -z "$PROFILE" ]; then
+    echo "Uso: agy-launch <nombre_perfil>"
+    echo ""
+    echo "Perfiles disponibles:"
+    jq -r 'to_entries[] | "  - \(.key): \(.value.desc)"' "$CONFIG_FILE"
+    exit 1
+fi
+
+# Leer el directorio de configuración correspondiente
+TARGET_DIR=$(jq -r ".[\"$PROFILE\"].config_dir" "$CONFIG_FILE")
+
+if [ "$TARGET_DIR" == "null" ]; then
+    echo "Error: El perfil '$PROFILE' no existe en $CONFIG_FILE"
+    exit 1
+fi
+
+# Expandir la tilde (~) si existe en la ruta
+TARGET_DIR="${TARGET_DIR/#\~/$HOME}"
+
+# Crear el directorio si no existe
+mkdir -p "$TARGET_DIR"
+
+echo "Lanzando Antigravity CLI con perfil [$PROFILE]..."
+echo "Directorio de sesión: $TARGET_DIR"
+echo "--------------------------------------------------"
+
+# Exportar la variable de entorno nativa de la CLI y ejecutar
+export GEMINI_CONFIG_DIR="$TARGET_DIR"
+exec agy "${@:2}"
